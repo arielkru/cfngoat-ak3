@@ -1,28 +1,35 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS CloudFormation Template to deploy insecure infrastructure
+
 Parameters:
   CompanyName:
     Description: Company Name
+    
     Type: String
     Default: acme
   Environment: 
     Description: Environment
     Type: String
+    
     Default: dev
   DBName:
     Description: Name of the Database
     Type: String
+    
     Default: db1
   Password: 
     Description: Database Password 
     Type: String
     NoEcho: True
+    
     MinLength: 1
     MaxLength: 41
+    
     AllowedPattern: ^[a-zA-Z0-9]*$
   LatestAmiId:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+    
 
 Resources:
   ####################
@@ -32,14 +39,18 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       AvailabilityZone: 
+      
         Fn::Select:
         - 0
         - Fn::GetAZs: ""
+        
       InstanceType: t2.nano
       SecurityGroupIds: 
+      
         - !Ref WebNodeSG
       ImageId: !Ref LatestAmiId
       SubnetId: !Ref WebSubnet
+      
       Tags: 
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-ec2" 
@@ -57,13 +68,16 @@ Resources:
     
   WebHostStorage:
     # Unencrypted Volume 
+    
     Type: AWS::EC2::Volume
     Properties: 
       AvailabilityZone: !Select 
         - 0
+        
         - Fn::GetAZs: ""
       #Encrypted: False
       Size: 1
+      
       Tags: 
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-ebs"
@@ -73,8 +87,10 @@ Resources:
   EBSAttachment:
     Type: AWS::EC2::VolumeAttachment
     Properties:
+    
       InstanceId: !Ref EC2Instance
       VolumeId: !Ref WebHostStorage
+      
       Device: /dev/sdh
   
   # Security Group  SSH port open to the world 
@@ -82,6 +98,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-sg"
+      
       GroupDescription: !Sub "${AWS::AccountId}-${CompanyName}-${Environment} Security Group"
       VpcId: !Ref WebVPC
       SecurityGroupIngress:
@@ -91,19 +108,23 @@ Resources:
         CidrIp: 0.0.0.0/0
       - IpProtocol: tcp
         FromPort: 22
+        
         ToPort: 22
         CidrIp: 0.0.0.0/0
       - IpProtocol: -1
         FromPort: 0
         ToPort: 0
+        
         CidrIp: 0.0.0.0/0
 
   WebVPC:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 172.16.0.0/16
+      
       EnableDnsSupport: True
       EnableDnsHostnames: True
+      
       Tags:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-vpc"
@@ -114,19 +135,23 @@ Resources:
       VpcId: !Ref WebVPC
       CidrBlock: 172.16.10.0/24
       AvailabilityZone: !Select
+      
         - 0
         - Fn::GetAZs: ""
       MapPublicIpOnLaunch: True
       Tags:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-subnet"
+          
 
   WebSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
+    
       VpcId: !Ref WebVPC
       CidrBlock: 172.16.11.0/24
       AvailabilityZone: !Select
+      
         - 1
         - Fn::GetAZs: ""
       MapPublicIpOnLaunch: True
@@ -137,34 +162,42 @@ Resources:
   WebIGW:
     Type: AWS::EC2::InternetGateway
     Properties:
+    
       Tags:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-igw"
 
   InternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
+    
     Properties:
       InternetGatewayId: !Ref WebIGW
       VpcId: !Ref WebVPC
+      
 
   WebRTB:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref WebVPC
       Tags:
+      
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-rtb"
+          
 
   WebDefaultPublicRoute:
     Type: AWS::EC2::Route
     DependsOn: InternetGatewayAttachment
     Properties:
+    
       RouteTableId: !Ref WebRTB
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref WebIGW
+      
 
   RTBAssoc:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    
     Properties:
       SubnetId: !Ref WebSubnet
       RouteTableId: !Ref WebRTB
@@ -173,6 +206,7 @@ Resources:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref WebSubnet2
+      
       RouteTableId: !Ref WebRTB
 
   WebENI:
@@ -180,6 +214,7 @@ Resources:
     Properties:
       Description: A nice description.
       SubnetId: !Ref WebSubnet
+      
       PrivateIpAddress: 172.16.10.100
       Tags:
         - Key: Name
@@ -189,10 +224,12 @@ Resources:
     Type: AWS::EC2::FlowLog
     Properties:
       ResourceId: !Ref WebVPC
+      
       ResourceType: VPC
       LogDestination: !GetAtt FlowBucket.Arn
       LogDestinationType: s3
       TrafficType: ALL
+      
 
   FlowBucket: 
     Type: AWS::S3::Bucket
@@ -201,6 +238,7 @@ Resources:
       BucketName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-flowlogs"
       Tags:
         - Key: Name
+        
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-flowlogs"
   
   #############
@@ -215,6 +253,7 @@ Resources:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-user"
         - Key: Environment
+        
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}"
 
   AccessKey: 
@@ -250,6 +289,7 @@ Resources:
       Description: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-logs bucket key"
       PendingWindowInDays: 7
       KeyPolicy:
+      
         Version: '2012-10-17'
         Id: key-default-1
         Statement:
@@ -264,6 +304,7 @@ Resources:
     Type: AWS::KMS::Alias
     Properties:
       AliasName: !Sub "alias/${AWS::AccountId}-${CompanyName}-${Environment}-logs-bucket-key"
+      
       TargetKeyId: !Ref LogsKey
 
   ################
@@ -274,6 +315,7 @@ Resources:
     Type: AWS::RDS::DBInstance
     DeletionPolicy: Delete
     Properties:
+    
       DBName: !Ref DBName
       Engine: MySQL
       OptionGroupName: !Ref DefaultDBOptionGroup
@@ -284,6 +326,7 @@ Resources:
 
       DBInstanceIdentifier: !Sub "rds-${AWS::AccountId}-${CompanyName}-${Environment}"
       EngineVersion: 8.0
+      
       DBInstanceClass: db.t3.micro
       AllocatedStorage: 20
       MasterUsername: admin
@@ -297,6 +340,7 @@ Resources:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-rds"
         - Key: Environment
+        
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}"
 
   DefaultDBOptionGroup:
@@ -313,17 +357,20 @@ Resources:
 
   DefaultDBParameterGroup:
     Type: AWS::RDS::DBParameterGroup
+    
     Properties: 
       Description: Terraform PG
       Family: mysql8.0
       Parameters: 
         character_set_client: utf8
         character_set_server: utf8
+        
       Tags:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-pg"
         - Key: Environment
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}"
+
 
   DefaultSubnetGroup: 
     Type: AWS::RDS::DBSubnetGroup
@@ -357,16 +404,19 @@ Resources:
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}"
 
   EC2Profile:
+  
     Type: AWS::IAM::InstanceProfile
     Properties: 
       InstanceProfileName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-profile"
       Path: "/"
+      
       Roles: 
         - !Ref EC2Role
 
   EC2Role: 
     Type: AWS::IAM::Role
     Properties: 
+    
       RoleName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-role"
       AssumeRolePolicyDocument: 
         Version: "2012-10-17"
@@ -379,10 +429,12 @@ Resources:
             Action: 
               - "sts:AssumeRole"
       Path: "/"
+      
       Tags:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-role"
         - Key: Environment
+        
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}"
 
   EC2Policy:
@@ -453,6 +505,7 @@ Resources:
             VerifyEmployeesTable($connection, DB_DATABASE);
             /* If input fields are populated, add a row to the EMPLOYEES table. */
             $employee_name = htmlentities($_POST['NAME']);
+            
             $employee_address = htmlentities($_POST['ADDRESS']);
             if (strlen($employee_name) || strlen($employee_address)) {
               AddEmployee($connection, $employee_name, $employee_address);
@@ -463,6 +516,7 @@ Resources:
             <table border="0">
               <tr>
                 <td>NAME</td>
+                
                 <td>ADDRESS</td>
               </tr>
               <tr>
@@ -574,6 +628,7 @@ Resources:
           console.log("Hello World");
       Environment: 
         Variables:
+        
           access_key: "AKIAIOSFODNN7EXAMPLE"
           secret_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
       Tags:
@@ -581,6 +636,7 @@ Resources:
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-analysis"
         - Key: Environment
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}"
+
 
   ############
   ###  S3  ###
@@ -608,6 +664,7 @@ Resources:
       AccessControl: Private
       Tags:
         - Key: Name
+        
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-financials"
 
   OperationsBucket:
@@ -616,9 +673,11 @@ Resources:
     DeletionPolicy: Delete
     Properties:
       BucketName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-operations"
+      
       AccessControl: Private
       VersioningConfiguration:
         Status: Enabled
+        
       Tags:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-operations"
@@ -628,6 +687,7 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
     Properties:
+    
       BucketName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-data-science"
       AccessControl: Private
       VersioningConfiguration:
@@ -643,6 +703,7 @@ Resources:
     # not encrypted
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
+    
     Properties:
       BucketName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-logs"
       AccessControl: LogDeliveryWrite
@@ -650,12 +711,14 @@ Resources:
         Status: Enabled
       BucketEncryption: 
         ServerSideEncryptionConfiguration:
+        
           - ServerSideEncryptionByDefault:
               KMSMasterKeyID: !Ref LogsKey
               SSEAlgorithm: aws:kms
       Tags:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-logs"
+          
 
    ########################
    ### Clean S3 Buckets ### 
@@ -665,9 +728,11 @@ Resources:
     Properties:
       AssumeRolePolicyDocument:
         Statement:
+        
         - Effect: Allow
           Principal:
             Service: [lambda.amazonaws.com]
+            
           Action: ['sts:AssumeRole']
       Path: /
       Policies:
@@ -677,10 +742,13 @@ Resources:
           - Effect: Allow
             Action:
               - logs:*
+              
             Resource: '*'
       - PolicyName: s3-object-delete
         PolicyDocument:
+        
           Statement:
+          
           - Effect: Allow
             Action:
               - s3:GetObject
@@ -830,6 +898,7 @@ Resources:
           
   CleanFlowBucketOnDelete:
     Type: Custom::cleanupflowbucket
+    
     Properties:
       ServiceToken: !GetAtt CleanBucketFunction.Arn
       BucketName: !Ref FlowBucket
@@ -871,6 +940,7 @@ Outputs:
   VpcId:
     Description: The ID of the VPC 
     Value: !Ref WebVPC
+    
   PublicSubnet:
     Description: The ID of the Public Subnet
     Value: !Ref WebSubnet
@@ -885,10 +955,12 @@ Outputs:
     Description: The Secret Key of the IAM User
     Value: !GetAtt AccessKey.SecretAccessKey
 
+
   DBAppPublicDNS:
     Description: DB App Public DNS Name
     Value: !GetAtt [DBAppInstance, PublicDnsName]
   DBEndpoint:
     Description: DB Endpoint 
+    
     Value: !Sub ${DefaultDB.Endpoint.Address}:{DefaultDB.Endpoint.Port}
 
