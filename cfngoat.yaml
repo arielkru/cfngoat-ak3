@@ -5,6 +5,7 @@ Parameters:
     Description: Company Name
     Type: String
     Default: acme
+    
   Environment: 
     Description: Environment
     Type: String
@@ -89,6 +90,7 @@ Resources:
         FromPort: 80
         ToPort: 80
         CidrIp: 0.0.0.0/0
+        
       - IpProtocol: tcp
         FromPort: 22
         ToPort: 22
@@ -113,6 +115,7 @@ Resources:
     Properties:
       VpcId: !Ref WebVPC
       CidrBlock: 172.16.10.0/24
+      
       AvailabilityZone: !Select
         - 0
         - Fn::GetAZs: ""
@@ -136,6 +139,7 @@ Resources:
 
   WebIGW:
     Type: AWS::EC2::InternetGateway
+    
     Properties:
       Tags:
         - Key: Name
@@ -209,6 +213,7 @@ Resources:
 
   User: 
     Type: AWS::IAM::User
+    
     Properties:
       UserName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-user"
       Tags:
@@ -220,9 +225,11 @@ Resources:
   AccessKey: 
     Type: AWS::IAM::AccessKey
     Properties:
+    
       UserName: !Ref User
 
   UserPolicy: 
+  
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: excess_policy
@@ -276,6 +283,7 @@ Resources:
     Properties:
       DBName: !Ref DBName
       Engine: MySQL
+      
       OptionGroupName: !Ref DefaultDBOptionGroup
       DBParameterGroupName: !Ref DefaultDBParameterGroup
       DBSubnetGroupName: !Ref DefaultSubnetGroup
@@ -327,6 +335,7 @@ Resources:
 
   DefaultSubnetGroup: 
     Type: AWS::RDS::DBSubnetGroup
+    
     Properties: 
       DBSubnetGroupName: !Sub "sg-${AWS::AccountId}-${CompanyName}-${Environment}"
       DBSubnetGroupDescription: CloudFormation DB Subnet Group
@@ -376,6 +385,7 @@ Resources:
             Principal: 
               Service: 
                 - "ec2.amazonaws.com"
+                
             Action: 
               - "sts:AssumeRole"
       Path: "/"
@@ -411,6 +421,7 @@ Resources:
         Fn::Select:
         - 0
         - Fn::GetAZs: ""
+        
       ImageId: !Ref LatestAmiId
       InstanceType: t2.nano
       IamInstanceProfile: !Ref EC2Profile
@@ -464,6 +475,7 @@ Resources:
               <tr>
                 <td>NAME</td>
                 <td>ADDRESS</td>
+                
               </tr>
               <tr>
                 <td>
@@ -649,6 +661,7 @@ Resources:
       VersioningConfiguration:
         Status: Enabled
       BucketEncryption: 
+      
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               KMSMasterKeyID: !Ref LogsKey
@@ -677,6 +690,7 @@ Resources:
           - Effect: Allow
             Action:
               - logs:*
+              
             Resource: '*'
       - PolicyName: s3-object-delete
         PolicyDocument:
@@ -732,6 +746,7 @@ Resources:
                              item = { Key: result.Contents[i].Key };
                              keysToDeleteArray.push(item);
                          }
+                  
                   
                          var delete_params = {
                              Bucket: bucketName, 
@@ -831,6 +846,7 @@ Resources:
   CleanFlowBucketOnDelete:
     Type: Custom::cleanupflowbucket
     Properties:
+    
       ServiceToken: !GetAtt CleanBucketFunction.Arn
       BucketName: !Ref FlowBucket
   
@@ -849,16 +865,19 @@ Resources:
   CleanOperationsBucketOnDelete:
     Type: Custom::cleanupoperationsbucket
     Properties:
+    
       ServiceToken: !GetAtt CleanBucketFunction.Arn
       BucketName: !Ref OperationsBucket
   
   CleanDataScienceBucketOnDelete:
+  
     Type: Custom::cleanupdatasciencebucket
     Properties:
       ServiceToken: !GetAtt CleanBucketFunction.Arn
       BucketName: !Ref DataScienceBucket
   
   CleanLogsBucketOnDelete:
+  
     Type: Custom::cleanuplogsbucket
     Properties:
       ServiceToken: !GetAtt CleanBucketFunction.Arn
@@ -872,6 +891,7 @@ Outputs:
     Description: The ID of the VPC 
     Value: !Ref WebVPC
   PublicSubnet:
+  
     Description: The ID of the Public Subnet
     Value: !Ref WebSubnet
   PublicSubnet2: 
@@ -881,6 +901,7 @@ Outputs:
   UserName:
     Description: The Name of the IAM User
     Value: !Ref User
+    
   SecretKey: 
     Description: The Secret Key of the IAM User
     Value: !GetAtt AccessKey.SecretAccessKey
