@@ -1,10 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS CloudFormation Template to deploy insecure infrastructure
+
 Parameters:
   CompanyName:
     Description: Company Name
     Type: String
     Default: acme
+    
   Environment: 
     Description: Environment
     Type: String
@@ -27,6 +29,7 @@ Parameters:
 Resources:
   ####################
   ###  EC2 in VPC  ###
+  
   ####################
   EC2Instance:
     Type: AWS::EC2::Instance
@@ -35,6 +38,7 @@ Resources:
         Fn::Select:
         - 0
         - Fn::GetAZs: ""
+        
       InstanceType: t2.nano
       SecurityGroupIds: 
         - !Ref WebNodeSG
@@ -45,12 +49,14 @@ Resources:
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-ec2" 
       UserData: 
         Fn::Base64: |
+        
           #!/bin/bash
           sudo yum -y update
           sudo yum -y install httpd php php-mysqlnd
           sudo systemctl enable httpd
           sudo systemctl start httpd
           export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMAAA
+          
           export AWS_SECRET_ACCESS_KEY=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
           export AWS_DEFAULT_REGION=us-west-2
           echo "<h1>Deployed via CloudFormation</h1>" | sudo tee /var/www/html/index.html
@@ -59,9 +65,11 @@ Resources:
     # Unencrypted Volume 
     Type: AWS::EC2::Volume
     Properties: 
+    
       AvailabilityZone: !Select 
         - 0
         - Fn::GetAZs: ""
+        
       #Encrypted: False
       Size: 1
       Tags: 
@@ -74,12 +82,14 @@ Resources:
     Type: AWS::EC2::VolumeAttachment
     Properties:
       InstanceId: !Ref EC2Instance
+      
       VolumeId: !Ref WebHostStorage
       Device: /dev/sdh
   
   # Security Group  SSH port open to the world 
   WebNodeSG:
     Type: AWS::EC2::SecurityGroup
+    
     Properties:
       GroupName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-sg"
       GroupDescription: !Sub "${AWS::AccountId}-${CompanyName}-${Environment} Security Group"
@@ -88,9 +98,12 @@ Resources:
       - IpProtocol: tcp
         FromPort: 80
         ToPort: 80
+        
         CidrIp: 0.0.0.0/0
+        
       - IpProtocol: tcp
         FromPort: 22
+        
         ToPort: 22
         CidrIp: 0.0.0.0/0
       - IpProtocol: -1
@@ -111,13 +124,17 @@ Resources:
   WebSubnet: 
     Type: AWS::EC2::Subnet
     Properties:
+    
       VpcId: !Ref WebVPC
       CidrBlock: 172.16.10.0/24
+      
+      
       AvailabilityZone: !Select
         - 0
         - Fn::GetAZs: ""
       MapPublicIpOnLaunch: True
       Tags:
+      
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-subnet"
 
@@ -127,6 +144,7 @@ Resources:
       VpcId: !Ref WebVPC
       CidrBlock: 172.16.11.0/24
       AvailabilityZone: !Select
+      
         - 1
         - Fn::GetAZs: ""
       MapPublicIpOnLaunch: True
@@ -136,8 +154,10 @@ Resources:
 
   WebIGW:
     Type: AWS::EC2::InternetGateway
+    
     Properties:
       Tags:
+      
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-igw"
 
@@ -165,12 +185,14 @@ Resources:
 
   RTBAssoc:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    
     Properties:
       SubnetId: !Ref WebSubnet
       RouteTableId: !Ref WebRTB
 
   RTBAssoc2:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    
     Properties:
       SubnetId: !Ref WebSubnet2
       RouteTableId: !Ref WebRTB
@@ -178,6 +200,7 @@ Resources:
   WebENI:
     Type: AWS::EC2::NetworkInterface
     Properties:
+    
       Description: A nice description.
       SubnetId: !Ref WebSubnet
       PrivateIpAddress: 172.16.10.100
@@ -191,11 +214,13 @@ Resources:
       ResourceId: !Ref WebVPC
       ResourceType: VPC
       LogDestination: !GetAtt FlowBucket.Arn
+      
       LogDestinationType: s3
       TrafficType: ALL
 
   FlowBucket: 
     Type: AWS::S3::Bucket
+    
     DeletionPolicy: Delete
     Properties:
       BucketName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-flowlogs"
@@ -209,6 +234,7 @@ Resources:
 
   User: 
     Type: AWS::IAM::User
+    
     Properties:
       UserName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-user"
       Tags:
@@ -220,9 +246,12 @@ Resources:
   AccessKey: 
     Type: AWS::IAM::AccessKey
     Properties:
+    
       UserName: !Ref User
 
   UserPolicy: 
+  
+  
     Type: AWS::IAM::Policy
     Properties:
       PolicyName: excess_policy
@@ -230,10 +259,12 @@ Resources:
         Version: 2012-10-17
         Statement:
           - Effect: Allow
+          
             Action:
               - "ec2:*"
               - "s3:*"
               - "lambda:*"
+              
               - "cloudwatch:*"
             Resource: "*"
       Users:
@@ -246,15 +277,18 @@ Resources:
   LogsKey:
     # Key does not have rotation enabled
     Type: AWS::KMS::Key
+    
     Properties: 
       Description: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-logs bucket key"
       PendingWindowInDays: 7
       KeyPolicy:
         Version: '2012-10-17'
         Id: key-default-1
+        
         Statement:
         - Sid: Enable IAM User Permissions
           Effect: Allow
+          
           Principal:
             AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
           Action: kms:*
@@ -276,9 +310,12 @@ Resources:
     Properties:
       DBName: !Ref DBName
       Engine: MySQL
+      
+      
       OptionGroupName: !Ref DefaultDBOptionGroup
       DBParameterGroupName: !Ref DefaultDBParameterGroup
       DBSubnetGroupName: !Ref DefaultSubnetGroup
+      
       VPCSecurityGroups: 
         - !Ref DefaultSG
 
@@ -286,6 +323,7 @@ Resources:
       EngineVersion: 8.0
       DBInstanceClass: db.t3.micro
       AllocatedStorage: 20
+      
       MasterUsername: admin
       MasterUserPassword: !Ref Password
       MultiAZ: False
@@ -295,17 +333,21 @@ Resources:
       PubliclyAccessible: True
       Tags:
         - Key: Name
+        
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-rds"
         - Key: Environment
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}"
 
   DefaultDBOptionGroup:
     Type: AWS::RDS::OptionGroup
+    
     Properties: 
       EngineName: mysql
       MajorEngineVersion: 8.0
+      
       OptionGroupDescription: CloudFormation OG
       Tags:
+      
         - Key: Name
           Value: !Sub "og-${AWS::AccountId}-${CompanyName}-${Environment}"
         - Key: Environment
@@ -327,6 +369,7 @@ Resources:
 
   DefaultSubnetGroup: 
     Type: AWS::RDS::DBSubnetGroup
+    
     Properties: 
       DBSubnetGroupName: !Sub "sg-${AWS::AccountId}-${CompanyName}-${Environment}"
       DBSubnetGroupDescription: CloudFormation DB Subnet Group
@@ -353,12 +396,15 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-rds-sg"
+          
         - Key: Environment
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}"
+
 
   EC2Profile:
     Type: AWS::IAM::InstanceProfile
     Properties: 
+    
       InstanceProfileName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-profile"
       Path: "/"
       Roles: 
@@ -369,6 +415,7 @@ Resources:
     Properties: 
       RoleName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-role"
       AssumeRolePolicyDocument: 
+      
         Version: "2012-10-17"
         Statement: 
           - 
@@ -376,12 +423,14 @@ Resources:
             Principal: 
               Service: 
                 - "ec2.amazonaws.com"
+                
             Action: 
               - "sts:AssumeRole"
       Path: "/"
       Tags:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-role"
+          
         - Key: Environment
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}"
 
@@ -392,6 +441,7 @@ Resources:
       PolicyDocument: 
         Version: "2012-10-17"
         Statement: 
+        
           - 
             Effect: "Allow"
             Action: 
@@ -408,12 +458,15 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       AvailabilityZone:
+      
         Fn::Select:
         - 0
         - Fn::GetAZs: ""
+        
       ImageId: !Ref LatestAmiId
       InstanceType: t2.nano
       IamInstanceProfile: !Ref EC2Profile
+      
       SecurityGroupIds: 
         - !Ref WebNodeSG
       SubnetId: !Ref WebSubnet
@@ -422,6 +475,7 @@ Resources:
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-dbapp"
       UserData: 
         Fn::Base64: !Sub |
+        
           #!/bin/bash
           ### Config from https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_Tutorials.WebServerDB.CreateWebServer.html
           sudo yum -y update
@@ -444,12 +498,14 @@ Resources:
           <html>
           <body>
           <h1>Sample page</h1>
+          
           <?php
             /* Connect to MySQL and select the database. */
             $connection = mysqli_connect(DB_SERVER, DB_USERNAME, DB_PASSWORD);
             if (mysqli_connect_errno()) echo "Failed to connect to MySQL: " . mysqli_connect_error();
             $database = mysqli_select_db($connection, DB_DATABASE);
             /* Ensure that the EMPLOYEES table exists. */
+            
             VerifyEmployeesTable($connection, DB_DATABASE);
             /* If input fields are populated, add a row to the EMPLOYEES table. */
             $employee_name = htmlentities($_POST['NAME']);
@@ -464,10 +520,13 @@ Resources:
               <tr>
                 <td>NAME</td>
                 <td>ADDRESS</td>
+                
               </tr>
               <tr>
                 <td>
                   <input type="text" name="NAME" maxlength="45" size="30" />
+                  
+                  
                 </td>
                 <td>
                   <input type="text" name="ADDRESS" maxlength="90" size="60" />
@@ -481,6 +540,7 @@ Resources:
           <!-- Display table data. -->
           <table border="1" cellpadding="2" cellspacing="2">
             <tr>
+            
               <td>ID</td>
               <td>NAME</td>
               <td>ADDRESS</td>
@@ -489,6 +549,7 @@ Resources:
           $result = mysqli_query($connection, "SELECT * FROM EMPLOYEES");
           while($query_data = mysqli_fetch_row($result)) {
             echo "<tr>";
+            
             echo "<td>",$query_data[0], "</td>",
                  "<td>",$query_data[1], "</td>",
                  "<td>",$query_data[2], "</td>";
@@ -509,6 +570,7 @@ Resources:
              $n = mysqli_real_escape_string($connection, $name);
              $a = mysqli_real_escape_string($connection, $address);
              $query = "INSERT INTO EMPLOYEES (NAME, ADDRESS) VALUES ('$n', '$a');";
+             
              if(!mysqli_query($connection, $query)) echo("<p>Error adding employee data.</p>");
           }
           /* Check whether the table exists and, if not, create it. */
@@ -519,6 +581,7 @@ Resources:
                    ID int(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                    NAME VARCHAR(45),
                    ADDRESS VARCHAR(90)
+                   
                  )";
                if(!mysqli_query($connection, $query)) echo("<p>Error creating table.</p>");
             }
@@ -527,6 +590,7 @@ Resources:
           function TableExists($tableName, $connection, $dbName) {
             $t = mysqli_real_escape_string($connection, $tableName);
             $d = mysqli_real_escape_string($connection, $dbName);
+            
             $checktable = mysqli_query($connection,
                 "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_NAME = '$t' AND TABLE_SCHEMA = '$d'");
             if(mysqli_num_rows($checktable) > 0) return true;
@@ -539,6 +603,7 @@ Resources:
 
   ################
   ###  Lambda  ###
+  
   ################
 
   IAM4Lambda:
@@ -553,6 +618,7 @@ Resources:
             Principal:
               Service:
                 - "lambda.amazonaws.com"
+                
             Action:
               - "sts:AssumeRole"
       Path: "/"
@@ -567,6 +633,7 @@ Resources:
     Properties:
       FunctionName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-analysis"
       Runtime: nodejs12.x
+      
       Role: !GetAtt IAM4Lambda.Arn
       Handler: exports.test
       Code:
@@ -578,6 +645,7 @@ Resources:
           secret_key: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
       Tags:
         - Key: Name
+        
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-analysis"
         - Key: Environment
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}"
@@ -595,6 +663,7 @@ Resources:
       AccessControl: PublicRead
       Tags:
         - Key: Name
+        
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-data"
 
   ### TODO - Custom Upload of insecure document
@@ -602,6 +671,7 @@ Resources:
   FinancialsBucket:
     # not encrypted, no access logs, no versioning
     Type: AWS::S3::Bucket
+    
     DeletionPolicy: Delete
     Properties:
       BucketName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-financials"
@@ -618,6 +688,7 @@ Resources:
       BucketName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-operations"
       AccessControl: Private
       VersioningConfiguration:
+      
         Status: Enabled
       Tags:
         - Key: Name
@@ -631,6 +702,7 @@ Resources:
       BucketName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-data-science"
       AccessControl: Private
       VersioningConfiguration:
+      
         Status: Enabled
       LoggingConfiguration: 
         DestinationBucketName: !Ref LogsBucket
@@ -645,10 +717,12 @@ Resources:
     DeletionPolicy: Delete
     Properties:
       BucketName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-logs"
+      
       AccessControl: LogDeliveryWrite
       VersioningConfiguration:
         Status: Enabled
       BucketEncryption: 
+      
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               KMSMasterKeyID: !Ref LogsKey
@@ -659,6 +733,7 @@ Resources:
 
    ########################
    ### Clean S3 Buckets ### 
+   
    ########################
   CleanupRole:
     Type: AWS::IAM::Role
@@ -672,23 +747,27 @@ Resources:
       Path: /
       Policies:
       - PolicyName: lambda-execute
+      
         PolicyDocument:
           Statement:
           - Effect: Allow
             Action:
               - logs:*
+              
             Resource: '*'
       - PolicyName: s3-object-delete
         PolicyDocument:
           Statement:
           - Effect: Allow
             Action:
+            
               - s3:GetObject
               - s3:ListBucket
               - s3:DeleteObject
             Resource: '*'
       Tags:
         - Key: Name
+        
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-cleanup-role"
         - Key: Environment
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}"
@@ -717,6 +796,7 @@ Resources:
                   var bucketName = event.ResourceProperties.BucketName;
            
                   console.log("Delete bucket requested for", bucketName);
+                  
           
                   var objects = listObjects(s3, bucketName);
                 
@@ -733,6 +813,7 @@ Resources:
                              keysToDeleteArray.push(item);
                          }
                   
+                  
                          var delete_params = {
                              Bucket: bucketName, 
                              Delete: {
@@ -744,6 +825,7 @@ Resources:
                          var deletedObjects = deleteObjects(s3, delete_params);
              
                          deletedObjects.then(function(result) {
+                         
                              console.log("deleteObjects API returned ", result);    
                              sendResponse(event, context, "SUCCESS");
                          }, function(err) {
@@ -796,6 +878,8 @@ Resources:
               Data: responseData
             });
             
+            
+            
             console.log("Response body:\n", responseBody);
                   
             var https = require("https");
@@ -807,6 +891,7 @@ Resources:
               port: 443,
               path: parsedUrl.path,
               method: "PUT",
+              
               headers: {
                 "content-type": "",
                 "content-length": responseBody.length
@@ -831,6 +916,7 @@ Resources:
   CleanFlowBucketOnDelete:
     Type: Custom::cleanupflowbucket
     Properties:
+    
       ServiceToken: !GetAtt CleanBucketFunction.Arn
       BucketName: !Ref FlowBucket
   
@@ -849,16 +935,19 @@ Resources:
   CleanOperationsBucketOnDelete:
     Type: Custom::cleanupoperationsbucket
     Properties:
+    
       ServiceToken: !GetAtt CleanBucketFunction.Arn
       BucketName: !Ref OperationsBucket
   
   CleanDataScienceBucketOnDelete:
+  
     Type: Custom::cleanupdatasciencebucket
     Properties:
       ServiceToken: !GetAtt CleanBucketFunction.Arn
       BucketName: !Ref DataScienceBucket
   
   CleanLogsBucketOnDelete:
+  
     Type: Custom::cleanuplogsbucket
     Properties:
       ServiceToken: !GetAtt CleanBucketFunction.Arn
@@ -872,6 +961,7 @@ Outputs:
     Description: The ID of the VPC 
     Value: !Ref WebVPC
   PublicSubnet:
+  
     Description: The ID of the Public Subnet
     Value: !Ref WebSubnet
   PublicSubnet2: 
@@ -881,6 +971,7 @@ Outputs:
   UserName:
     Description: The Name of the IAM User
     Value: !Ref User
+    
   SecretKey: 
     Description: The Secret Key of the IAM User
     Value: !GetAtt AccessKey.SecretAccessKey
