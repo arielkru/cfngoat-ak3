@@ -26,6 +26,12 @@ Parameters:
     Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
 
 Resources:
+  Broker:
+    Type: AWS::AmazonMQ::Broker
+    Properties:
+      PubliclyAccessible: True
+  
+  
   ####################
   ###  EC2 in VPC  ###
   ####################
@@ -932,3 +938,5 @@ Outputs:
     Description: DB Endpoint 
     Value: !Sub ${DefaultDB.Endpoint.Address}:{DefaultDB.Endpoint.Port}
 
+
+  
