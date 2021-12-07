@@ -1,5 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS CloudFormation Template to deploy insecure infrastructure
+
 Parameters:
   CompanyName:
     Description: Company Name
@@ -39,6 +40,7 @@ Resources:
       SecurityGroupIds: 
         - !Ref WebNodeSG
       ImageId: !Ref LatestAmiId
+      
       SubnetId: !Ref WebSubnet
       Tags: 
         - Key: Name
@@ -57,6 +59,7 @@ Resources:
     
   WebHostStorage:
     # Unencrypted Volume 
+    
     Type: AWS::EC2::Volume
     Properties: 
       AvailabilityZone: !Select 
@@ -71,6 +74,7 @@ Resources:
   ### CFN Does not Support Volume Snapshot
 
   EBSAttachment:
+  
     Type: AWS::EC2::VolumeAttachment
     Properties:
       InstanceId: !Ref EC2Instance
@@ -79,6 +83,7 @@ Resources:
   
   # Security Group  SSH port open to the world 
   WebNodeSG:
+  
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-sg"
@@ -87,6 +92,7 @@ Resources:
       SecurityGroupIngress:
       - IpProtocol: tcp
         FromPort: 80
+        
         ToPort: 80
         CidrIp: 0.0.0.0/0
       - IpProtocol: tcp
@@ -100,6 +106,7 @@ Resources:
 
   WebVPC:
     Type: AWS::EC2::VPC
+    
     Properties:
       CidrBlock: 172.16.0.0/16
       EnableDnsSupport: True
@@ -109,11 +116,14 @@ Resources:
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-vpc"
 
   WebSubnet: 
+  
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref WebVPC
       CidrBlock: 172.16.10.0/24
+      
       AvailabilityZone: !Select
+      
         - 0
         - Fn::GetAZs: ""
       MapPublicIpOnLaunch: True
@@ -122,10 +132,14 @@ Resources:
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-subnet"
 
   WebSubnet2:
+  
+  
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref WebVPC
+      
       CidrBlock: 172.16.11.0/24
+      
       AvailabilityZone: !Select
         - 1
         - Fn::GetAZs: ""
@@ -136,6 +150,7 @@ Resources:
 
   WebIGW:
     Type: AWS::EC2::InternetGateway
+    
     Properties:
       Tags:
         - Key: Name
@@ -144,12 +159,15 @@ Resources:
   InternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties:
+    
       InternetGatewayId: !Ref WebIGW
       VpcId: !Ref WebVPC
 
   WebRTB:
     Type: AWS::EC2::RouteTable
     Properties:
+    
+    
       VpcId: !Ref WebVPC
       Tags:
         - Key: Name
@@ -157,19 +175,23 @@ Resources:
 
   WebDefaultPublicRoute:
     Type: AWS::EC2::Route
+    
     DependsOn: InternetGatewayAttachment
     Properties:
       RouteTableId: !Ref WebRTB
+      
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref WebIGW
 
   RTBAssoc:
     Type: AWS::EC2::SubnetRouteTableAssociation
+    
     Properties:
       SubnetId: !Ref WebSubnet
       RouteTableId: !Ref WebRTB
 
   RTBAssoc2:
+  
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref WebSubnet2
@@ -177,6 +199,7 @@ Resources:
 
   WebENI:
     Type: AWS::EC2::NetworkInterface
+    
     Properties:
       Description: A nice description.
       SubnetId: !Ref WebSubnet
@@ -191,6 +214,7 @@ Resources:
       ResourceId: !Ref WebVPC
       ResourceType: VPC
       LogDestination: !GetAtt FlowBucket.Arn
+      
       LogDestinationType: s3
       TrafficType: ALL
 
@@ -211,6 +235,7 @@ Resources:
     Type: AWS::IAM::User
     Properties:
       UserName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-user"
+      
       Tags:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-user"
@@ -219,6 +244,7 @@ Resources:
 
   AccessKey: 
     Type: AWS::IAM::AccessKey
+    
     Properties:
       UserName: !Ref User
 
@@ -229,6 +255,7 @@ Resources:
       PolicyDocument:
         Version: 2012-10-17
         Statement:
+        
           - Effect: Allow
             Action:
               - "ec2:*"
@@ -248,6 +275,7 @@ Resources:
     Type: AWS::KMS::Key
     Properties: 
       Description: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-logs bucket key"
+      
       PendingWindowInDays: 7
       KeyPolicy:
         Version: '2012-10-17'
@@ -275,6 +303,7 @@ Resources:
     DeletionPolicy: Delete
     Properties:
       DBName: !Ref DBName
+      
       Engine: MySQL
       OptionGroupName: !Ref DefaultDBOptionGroup
       DBParameterGroupName: !Ref DefaultDBParameterGroup
@@ -284,6 +313,7 @@ Resources:
 
       DBInstanceIdentifier: !Sub "rds-${AWS::AccountId}-${CompanyName}-${Environment}"
       EngineVersion: 8.0
+      
       DBInstanceClass: db.t3.micro
       AllocatedStorage: 20
       MasterUsername: admin
@@ -305,6 +335,7 @@ Resources:
       EngineName: mysql
       MajorEngineVersion: 8.0
       OptionGroupDescription: CloudFormation OG
+      
       Tags:
         - Key: Name
           Value: !Sub "og-${AWS::AccountId}-${CompanyName}-${Environment}"
@@ -331,6 +362,7 @@ Resources:
       DBSubnetGroupName: !Sub "sg-${AWS::AccountId}-${CompanyName}-${Environment}"
       DBSubnetGroupDescription: CloudFormation DB Subnet Group
       SubnetIds: 
+      
         - !Ref WebSubnet
         - !Ref WebSubnet2
       Tags:
@@ -368,6 +400,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties: 
       RoleName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-role"
+      
       AssumeRolePolicyDocument: 
         Version: "2012-10-17"
         Statement: 
@@ -406,6 +439,7 @@ Resources:
   DBAppInstance:
     # EC2 have plain text secrets in user data
     Type: AWS::EC2::Instance
+    
     Properties:
       AvailabilityZone:
         Fn::Select:
@@ -566,6 +600,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-analysis"
+      
       Runtime: nodejs12.x
       Role: !GetAtt IAM4Lambda.Arn
       Handler: exports.test
@@ -609,11 +644,13 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-financials"
+          
 
   OperationsBucket:
     # not encrypted, no access logs
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
+    
     Properties:
       BucketName: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-operations"
       AccessControl: Private
@@ -664,6 +701,7 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
+      
         Statement:
         - Effect: Allow
           Principal:
@@ -691,6 +729,7 @@ Resources:
         - Key: Name
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}-cleanup-role"
         - Key: Environment
+        
           Value: !Sub "${AWS::AccountId}-${CompanyName}-${Environment}"
 
   CleanBucketFunction:
@@ -881,6 +920,7 @@ Outputs:
   UserName:
     Description: The Name of the IAM User
     Value: !Ref User
+    
   SecretKey: 
     Description: The Secret Key of the IAM User
     Value: !GetAtt AccessKey.SecretAccessKey
